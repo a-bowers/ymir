@@ -69,5 +69,8 @@ export function toPythonEnv(req: E.Request): { [key: string]: string } {
         env[headerToWSGIVar(header)] = req.headers[header] || '';
     }
 
+    // Env variables
+    Object.assign(env, process.env);
+
     return env;
 }
