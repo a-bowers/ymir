@@ -1,19 +1,24 @@
 import Python from 'python.node';
 import * as E from 'express';
-import { toPythonEnv } from './toPythonEnv';
-import { WSGIResponseWrapper } from './WSGIResponseWrapper';
+import { WSGIWrapper, IWSGIHeaderValue, IWSGIExecInfo, IWSGIFunction } from './WSGI';
+import { IDict } from './IDict';
 
+export function middleware(module: [string, string] | IWSGIFunction) {
+    
+    const wsgiFunc: IWSGIFunction = (Array.isArray(module) 
+        ? Python.import(module[0])[module[1]] 
+        : module
+    );
 
-export function middleware(module: string, method = 'app') {
-    const wsgiModule = Python.import(module);
-    const wsgiFunc = wsgiModule[method];
-
-    return function WSGIMiddleWareAdapter(req: E.Request, res: E.Response, next: E.NextFunction) {
+    return function WSGIMiddleWareAdapter(
+        req: E.Request, 
+        res: E.Response, 
+        next: E.NextFunction
+    ) {
         try {
-            const env = toPythonEnv(req);
-            const wsgiResponseHelper = new WSGIResponseWrapper(res);
-            const pythonResponse = wsgiFunc(env, wsgiResponseHelper.start_response);
-            wsgiResponseHelper.writeIter(pythonResponse);
+            const wsgi = new WSGIWrapper(req, res);
+            const pythonResponse = wsgiFunc(wsgi.env, wsgi.start_response);
+            wsgi.writeIter(pythonResponse);
         } catch (e) {
             next(e);
         }

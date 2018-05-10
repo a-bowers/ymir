@@ -1,10 +1,13 @@
 import * as E from 'express';
-import { OutgoingHttpHeaders } from 'http';
 import { IDict } from './IDict';
+import { toPythonEnv } from './toPythonEnv';
 
 // I have no words
 export type IWSGIHeaderValue = [string, string];
 export type IWSGIExecInfo = [number, string, any] | undefined;
+
+export type IWSGIStartResponse = (status: string, responseHeaders: IWSGIHeaderValue[], execInfo: IWSGIExecInfo) => (data: Buffer) => void;
+export type IWSGIFunction = (env: IDict, startResponse: IWSGIStartResponse) => Iterable<Buffer>;
 
 export interface IWSGIResponseBucket {
     readonly code: number;
@@ -13,10 +16,11 @@ export interface IWSGIResponseBucket {
 }
 
 
-export class WSGIResponseWrapper {
+export class WSGIWrapper {
     public responseBucket: IWSGIResponseBucket | null = null;     
     
     constructor(
+        public readonly req: E.Request,
         public readonly res: E.Response
     ) {}
 
@@ -60,6 +64,10 @@ export class WSGIResponseWrapper {
         };
 
         return this.write;
+    }
+
+    get env() {
+        return toPythonEnv(this.req);
     }
 
     private _writeStatusAndHeaders() {

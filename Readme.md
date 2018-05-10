@@ -18,8 +18,8 @@ Maybe? vOv YMMV
 const express = require('express');
 const ymir    = require('ymir');
 const app     = express();
-
 app.use(ymir.middleware('path/to/python', 'app_name_exported'));
+app.use(require('python.node').import('foo.bar').some_app);
 
 app.listen(4040);
 ```
