@@ -6,8 +6,15 @@ import { toPythonEnv } from './toPythonEnv';
 export type IWSGIHeaderValue = [string, string];
 export type IWSGIExecInfo = [number, string, any] | undefined;
 
-export type IWSGIStartResponse = (status: string, responseHeaders: IWSGIHeaderValue[], execInfo: IWSGIExecInfo) => (data: Buffer) => void;
-export type IWSGIFunction = (env: IDict, startResponse: IWSGIStartResponse) => Iterable<Buffer>;
+export type IWSGIStartResponse = (
+    status: string,
+    responseHeaders: IWSGIHeaderValue[],
+    execInfo: IWSGIExecInfo
+) => (data: Buffer) => void;
+export type IWSGIFunction = (
+    env: IDict,
+    startResponse: IWSGIStartResponse
+) => Iterable<Buffer>;
 
 export interface IWSGIResponseBucket {
     readonly code: number;
@@ -15,20 +22,28 @@ export interface IWSGIResponseBucket {
     readonly headers: IDict;
 }
 
-
 export class WSGIWrapper {
-    public responseBucket: IWSGIResponseBucket | null = null;     
-    
+    public responseBucket: IWSGIResponseBucket | null = null;
+
     constructor(
         public readonly req: E.Request,
         public readonly res: E.Response
-    ) {}
-
-    public writeIter(iter: Iterable<Buffer>) {
-        throw new Error('Not implemented yet, no idea wtf is this');
+    ) {
+        // As this is going to go really far places
+        // its better to bind it.
+        this.start_response = this.start_response.bind(this);
     }
 
-    public write(data: Buffer) {
+    public writeIter(iter: Iterable<Buffer | string>) {
+        for (const part of iter) {
+            if (part) {
+                this.write(part);
+            }
+        }
+        this.res.end();
+    }
+
+    public write(data: Buffer | string) {
         if (!this.res.headersSent) {
             this._writeStatusAndHeaders();
         }
@@ -36,10 +51,13 @@ export class WSGIWrapper {
     }
 
     public start_response(
-        pythonStatus: string, 
-        pythonHeaders: IWSGIHeaderValue[], 
+        pythonStatus: string,
+        pythonHeaders: IWSGIHeaderValue[],
         execInfo: IWSGIExecInfo
     ) {
+        // Hack as the native module doesn't auto convert it to array
+        pythonHeaders = pythonHeaders.valueOf!() as any;
+
         if (execInfo !== undefined) {
             if (this.res.headersSent) {
                 throw new Error(execInfo[1]);
@@ -58,7 +76,7 @@ export class WSGIWrapper {
         }
 
         this.responseBucket = {
-            code, 
+            code,
             headers,
             message,
         };
@@ -75,8 +93,9 @@ export class WSGIWrapper {
             throw new Error('write() was invoked before start_response()');
         }
 
-        const {code, headers, message} = this.responseBucket;
-        this.res.status(code).send(message);
-        this.res.set(headers);    
+        const { code, headers, message } = this.responseBucket;
+        this.res.statusMessage = message;
+        this.res.statusCode = code;
+        this.res.set(headers);
     }
 }

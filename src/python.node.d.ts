@@ -1,11 +1,11 @@
-declare module "python.node" {
-    export interface ImportFunction{
-        (module: string): any
+declare module 'python.node' {
+    interface ImportFunction {
+        (module: string): any;
     }
-    export interface IPythonNode {
-            import : ImportFunction;
+    interface IPythonNode {
+        import: ImportFunction;
     }
     const python: IPythonNode;
 
-    export default python;
+    export = python;
 }

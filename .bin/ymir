@@ -1,0 +1,31 @@
+#!/usr/bin/env node
+
+const ymir = require('../');
+const express = require('express');
+const yargs = require('yargs');
+
+const app = express();
+
+yargs.command('serve [port]', 'start the server and serve a WSGI app', (yargs) => {
+    yargs.positional('port', {
+        describe: 'port to bind on',
+        default: 5000
+    })
+}, run).option('app', {
+    default: "wsgiref.simple_server:demo_app",
+    alias: 'a',
+    desc: 'App to serve from in format file:exported_value'
+}).argv;
+
+
+function show(str) {
+    console.log(str);
+}
+
+function run(argv) {
+    show(`Starting ${argv.app}`);
+    app.use('/', ymir.middleware(argv.app.split(':')));
+    app.listen(argv.port, () => {
+        show(`Listening on port ${argv.port}`);
+    });
+}
