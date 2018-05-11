@@ -5,7 +5,11 @@ export interface IPyError extends Error {
 export class PyException extends Error {
     public static map = {};
 
-    public static Intercept(err: Error | IPyError) {
+    public static is(err: Error | IPyError, errName: string) {
+        return (err as IPyError).pyErrorName === errName;
+    }
+
+    public static convert(err: Error | IPyError) {
         if ((err as IPyError).pyErrorName) {
             return new PyException(err as IPyError);
         }

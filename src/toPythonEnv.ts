@@ -1,5 +1,7 @@
 import * as E from 'express';
 import { Stream } from 'stream';
+import { IDict } from '../lib/IDict';
+import { BytesIOStream } from './python';
 
 export type ProtocolType = 'http' | 'https';
 
@@ -44,7 +46,7 @@ export function headerToWSGIVar(header: string) {
     return `HTTP_${header.replace(/\-/g, '_').toUpperCase()}`;
 }
 
-export function toPythonEnv(req: E.Request): { [key: string]: string } {
+export function toPythonEnv(req: E.Request): IDict<any> {
     const env: IPythonEnv = {} as any;
     const { socket } = req;
     const isUnixDomainSocket = typeof socket.address() === 'string';
@@ -65,8 +67,13 @@ export function toPythonEnv(req: E.Request): { [key: string]: string } {
 
     // @TODO: Must provide this if possible
     // env.SSL_PROTOCOL = req.socket
-    env['wsgi.url_scheme'] = req.protocol as ProtocolType;
+    const body = new BytesIOStream();
 
+    env['wsgi.url_scheme'] = req.protocol as ProtocolType;
+    env['wsgi.input'] = body.ref;
+
+    req.pipe(body);
+    
     for (const header of Object.keys(req.headers)) {
         env[headerToWSGIVar(header)] = req.headers[header] || '';
     }

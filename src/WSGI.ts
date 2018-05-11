@@ -85,7 +85,7 @@ export class WSGIWrapper {
         return this.write;
     }
 
-    get env() {
+    get env(): IDict<any> {
         return toPythonEnv(this.req);
     }
 
