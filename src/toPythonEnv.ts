@@ -1,6 +1,6 @@
 import * as E from 'express';
 import { Stream } from 'stream';
-import { IDict } from '../lib/IDict';
+import { IDict } from './IDict';
 import { BytesIOStream } from './python';
 
 export type ProtocolType = 'http' | 'https';
@@ -73,7 +73,7 @@ export function toPythonEnv(req: E.Request): IDict<any> {
     env['wsgi.input'] = body.ref;
 
     req.pipe(body);
-    
+
     for (const header of Object.keys(req.headers)) {
         env[headerToWSGIVar(header)] = req.headers[header] || '';
     }

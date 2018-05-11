@@ -20,8 +20,6 @@ export declare class WSGIWrapper {
     writeIter(iter: Iterable<Buffer | string | null>): void;
     write(data: Buffer | string): void;
     start_response(pythonStatus: string, pythonHeaders: IWSGIHeaderValue[], execInfo: IWSGIExecInfo): (data: string | Buffer) => void;
-    readonly env: {
-        [key: string]: string;
-    };
+    readonly env: IDict<any>;
     private _writeStatusAndHeaders();
 }

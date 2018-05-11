@@ -2,6 +2,7 @@
 /// <reference types="express" />
 import * as E from 'express';
 import { Stream } from 'stream';
+import { IDict } from './IDict';
 export declare type ProtocolType = 'http' | 'https';
 export interface IPythonEnv {
     SCRIPT_NAME: string;
@@ -25,6 +26,4 @@ export interface IPythonEnv {
     [key: string]: any;
 }
 export declare function headerToWSGIVar(header: string): string;
-export declare function toPythonEnv(req: E.Request): {
-    [key: string]: string;
-};
+export declare function toPythonEnv(req: E.Request): IDict<any>;

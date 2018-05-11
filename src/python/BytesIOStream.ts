@@ -1,5 +1,5 @@
-import { Writable } from "stream";
-import { io } from ".";
+import { Writable } from 'stream';
+import { io } from '.';
 
 export class BytesIOStream extends Writable {
     private readonly bytesIObuffer: any;

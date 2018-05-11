@@ -3,7 +3,8 @@ export interface IPyError extends Error {
 }
 export declare class PyException extends Error {
     static map: {};
-    static Intercept(err: Error | IPyError): Error;
+    static is(err: Error | IPyError, errName: string): boolean;
+    static convert(err: Error | IPyError): Error;
     readonly name: string;
     constructor(err: IPyError);
 }
