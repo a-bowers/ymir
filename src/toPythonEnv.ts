@@ -4,10 +4,11 @@ import { Stream } from 'stream';
 export type ProtocolType = 'http' | 'https';
 
 // https://www.python.org/dev/peps/pep-0333/#environ-variables
+
 export interface IPythonEnv {
     // The following variables must be present, unless their value would be an
-    // empty string, in which case they may be omitted, except as
-    // otherwise noted below.
+    // empty string, in which case they may be omitted, except as otherwise 
+    // noted below.
     SCRIPT_NAME: string;
     REQUEST_METHOD: string;
     PATH: string;
@@ -18,10 +19,10 @@ export interface IPythonEnv {
     SERVER_PORT: string;
     SERVER_PROTOCOL: string;
 
-    //  A server or gateway should attempt to provide as many other CGI variables
+    // A server or gateway should attempt to provide as many other CGI variables
     // as are applicable. In addition, if SSL is in use, the server or gateway
     // should also provide as many of the Apache SSL environment variables [5]
-    //  as are applicable, such as HTTPS=on and SSL_PROTOCOL.
+    // as are applicable, such as HTTPS=on and SSL_PROTOCOL.
     HTTPS: 'on' | 'off';
     SSL_PROTOCOL: string;
 
@@ -54,15 +55,16 @@ export function toPythonEnv(req: E.Request): { [key: string]: string } {
     env.QUERY_STRING = req.originalUrl.split('?')[1] || '';
     env.CONTENT_TYPE = req.headers['content-type'] || '';
     env.CONTENT_LENGTH = req.headers['content-length'] || '';
+
     // Good enough for now
     env.SERVER_NAME = isUnixDomainSocket ? '' : socket.localAddress;
     env.SERVER_PORT = isUnixDomainSocket ? '' : socket.localPort.toString(10);
     env.SERVER_PROTOCOL = `HTTP/${req.httpVersion}`;
 
     env.HTTPS = req.secure ? 'on' : 'off';
+
     // @TODO: Must provide this if possible
     // env.SSL_PROTOCOL = req.socket
-
     env['wsgi.url_scheme'] = req.protocol as ProtocolType;
 
     for (const header of Object.keys(req.headers)) {

@@ -21,11 +21,7 @@ export function middleware(module: [string, string] | IWSGIFunction) {
         try {
             const wsgi = new WSGIWrapper(req, res);
             const pythonResponse = wsgiFunc(wsgi.env, wsgi.start_response);
-            setTimeout(() => {
-                wsgi.writeIter((pythonResponse as any).valueOf() as Array<
-                    string
-                >);
-            }, 4);
+            wsgi.writeIter((pythonResponse as any).valueOf() as Array<string>);
         } catch (e) {
             next(e);
         }
