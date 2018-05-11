@@ -1,5 +1,6 @@
 import * as E from 'express';
 import { IDict } from './IDict';
+import { IPyIterable } from './python/Iterator';
 import { toPythonEnv } from './toPythonEnv';
 
 // I have no words
@@ -14,7 +15,7 @@ export type IWSGIStartResponse = (
 export type IWSGIFunction = (
     env: IDict,
     startResponse: IWSGIStartResponse
-) => Iterable<Buffer>;
+) => IPyIterable | undefined | [string];
 
 export interface IWSGIResponseBucket {
     readonly code: number;
@@ -34,7 +35,7 @@ export class WSGIWrapper {
         this.start_response = this.start_response.bind(this);
     }
 
-    public writeIter(iter: Iterable<Buffer | string>) {
+    public writeIter(iter: Iterable<Buffer | string | null>) {
         for (const part of iter) {
             if (part) {
                 this.write(part);

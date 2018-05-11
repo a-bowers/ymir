@@ -7,7 +7,7 @@ export type ProtocolType = 'http' | 'https';
 
 export interface IPythonEnv {
     // The following variables must be present, unless their value would be an
-    // empty string, in which case they may be omitted, except as otherwise 
+    // empty string, in which case they may be omitted, except as otherwise
     // noted below.
     SCRIPT_NAME: string;
     REQUEST_METHOD: string;
@@ -71,7 +71,7 @@ export function toPythonEnv(req: E.Request): { [key: string]: string } {
         env[headerToWSGIVar(header)] = req.headers[header] || '';
     }
 
-    // Env variables
+    // Attach Env variables
     Object.assign(env, process.env);
 
     return env;

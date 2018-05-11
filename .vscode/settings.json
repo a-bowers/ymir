@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "*.jst": "html",
+        "*.sql": "pgsql",
+        "exception": "cpp",
+        "iterator": "cpp"
+    }
+}
