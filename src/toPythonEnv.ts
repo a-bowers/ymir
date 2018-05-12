@@ -43,6 +43,11 @@ export interface IPythonEnv {
 }
 
 export function headerToWSGIVar(header: string) {
+    // Very-Expensive
+    // https://nvd.nist.gov/vuln/detail/CVE-2015-0219
+    if (header.indexOf('_') !== -1) {
+        return null;
+    }
     return `HTTP_${header.replace(/\-/g, '_').toUpperCase()}`;
 }
 
@@ -65,17 +70,22 @@ export function toPythonEnv(req: E.Request): IDict<any> {
 
     env.HTTPS = req.secure ? 'on' : 'off';
 
-    // @TODO: Must provide this if possible
-    // env.SSL_PROTOCOL = req.socket
-    const body = new BytesIOStream();
-
+    
     env['wsgi.url_scheme'] = req.protocol as ProtocolType;
-    env['wsgi.input'] = body.ref;
 
-    req.pipe(body);
+    // If we have content-length, then 
+    // respond accordingly
+    if (req.headers["content-length"]) {
+        const body = new BytesIOStream();
+        env['wsgi.input'] = body.ref;
+        req.pipe(body);    
+    }
 
     for (const header of Object.keys(req.headers)) {
-        env[headerToWSGIVar(header)] = req.headers[header] || '';
+        const headerName = headerToWSGIVar(header);
+        if (headerName) {
+            env[headerName] = req.headers[header] || '';
+        }
     }
 
     // Attach Env variables

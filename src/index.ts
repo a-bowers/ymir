@@ -1,17 +1,26 @@
 import * as E from 'express';
 import { IDict } from './IDict';
-import { instance, IPyIterable, iterate, len, PyType } from './python';
-import {
-    IWSGIExecInfo,
-    IWSGIFunction,
-    IWSGIHeaderValue,
-    WSGIWrapper,
-} from './WSGI';
+import { instance } from './python';
+import { IWSGIExecInfo, IWSGIFunction, IWSGIHeaderValue, WSGI } from './WSGI';
 
-export function middleware(module: [string, string] | IWSGIFunction) {
-    const wsgiFunc: IWSGIFunction = Array.isArray(module)
-        ? instance.import(module[0])[module[1]]
-        : module;
+/**
+ * 
+ * @param module string in format module.name:function
+ * @param module IWSGIFunction 
+ */
+export function middleware(module: string | IWSGIFunction) {
+    let wsgiFunc: IWSGIFunction;
+    
+    if (typeof module === 'string') {
+        const [file, variable] = module.split(':');
+        wsgiFunc = instance.import(file)[variable];
+    } else { 
+        wsgiFunc = module;
+    }
+
+    if (!(wsgiFunc instanceof Function)) {
+        throw new Error("Module did not result into a function");
+    }
 
     return function WSGIMiddleWareAdapter(
         req: E.Request,
@@ -19,29 +28,12 @@ export function middleware(module: [string, string] | IWSGIFunction) {
         next: E.NextFunction
     ) {
         try {
-            const wsgi = new WSGIWrapper(req, res);
-            const pythonResponse = wsgiFunc(wsgi.env, wsgi.start_response);
-
-            // There are cases where start_response may not be called
-            // we need to pull a bjoern on this one
-
-            if (pythonResponse) {
-                // If a single element with only 1 element is returned
-                if (
-                    PyType.is(pythonResponse, 'list') &&
-                    len(pythonResponse) === 1
-                ) {
-                    // This is very ugly
-                    return wsgi.write((pythonResponse.valueOf() as any)[0]);
-                }
-
-                if (pythonResponse.hasOwnProperty('next')) {
-                    const generator = iterate(pythonResponse as IPyIterable);
-                    return wsgi.writeIter(generator);
-                }
-            }
+            const wsgi = new WSGI(req, res);
+            wsgi.execute(wsgiFunc);
         } catch (e) {
             next(e);
         }
-    };
+    }
 }
+
+export * from './python';

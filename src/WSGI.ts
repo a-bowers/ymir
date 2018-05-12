@@ -1,7 +1,8 @@
 import * as E from 'express';
 import { IDict } from './IDict';
-import { IPyIterable } from './python/Iterator';
+import { IPyIterable, iterate } from './python/Iterator';
 import { toPythonEnv } from './toPythonEnv';
+import { WSGIResponseStream } from './WSGIResponseStream';
 
 // I have no words
 export type IWSGIHeaderValue = [string, string];
@@ -15,7 +16,7 @@ export type IWSGIStartResponse = (
 export type IWSGIFunction = (
     env: IDict,
     startResponse: IWSGIStartResponse
-) => IPyIterable | undefined | [string];
+) => IPyIterable | { __iter__(): IPyIterable };
 
 export interface IWSGIResponseBucket {
     readonly code: number;
@@ -23,7 +24,7 @@ export interface IWSGIResponseBucket {
     readonly headers: IDict;
 }
 
-export class WSGIWrapper {
+export class WSGI {
     public responseBucket: IWSGIResponseBucket | null = null;
 
     constructor(
@@ -35,7 +36,23 @@ export class WSGIWrapper {
         this.start_response = this.start_response.bind(this);
     }
 
-    public writeIter(iter: Iterable<Buffer | string | null>) {
+    public async execute(wsgiFunc: IWSGIFunction) {
+        let pythonResponse = wsgiFunc(this.env, this.start_response);
+
+        // There are cases where start_response may not be called
+        // we need to pull a bjoern on this one
+
+        if (pythonResponse) {
+            if (!pythonResponse.hasOwnProperty('next')) {
+                pythonResponse = (pythonResponse as any).__iter__();
+            }
+            const stream = new WSGIResponseStream();
+            stream.pipe(this.res);
+            stream.consume(pythonResponse as IPyIterable);
+        }
+    }
+
+    private writeIter(iter: Iterable<Buffer | string | null>) {
         for (const part of iter) {
             if (part) {
                 this.write(part);
@@ -44,14 +61,14 @@ export class WSGIWrapper {
         this.res.end();
     }
 
-    public write(data: Buffer | string) {
+    private write(data: Buffer | string) {
         if (!this.res.headersSent) {
             this._writeStatusAndHeaders();
         }
         this.res.write(data);
     }
 
-    public start_response(
+    private start_response(
         pythonStatus: string,
         pythonHeaders: IWSGIHeaderValue[],
         execInfo: IWSGIExecInfo
@@ -85,7 +102,7 @@ export class WSGIWrapper {
         return this.write;
     }
 
-    get env(): IDict<any> {
+    private get env(): IDict<any> {
         return toPythonEnv(this.req);
     }
 
@@ -95,8 +112,6 @@ export class WSGIWrapper {
         }
 
         const { code, headers, message } = this.responseBucket;
-        this.res.statusMessage = message;
-        this.res.statusCode = code;
-        this.res.set(headers);
+        this.res.writeHead(code, message, headers);
     }
 }
