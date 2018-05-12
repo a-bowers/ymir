@@ -1,6 +1,6 @@
 import * as E from 'express';
 import { IDict } from './IDict';
-import { instance, iterate } from './python';
+import { instance, IPyIterable, iterate, len, PyType } from './python';
 import {
     IWSGIExecInfo,
     IWSGIFunction,
@@ -21,13 +21,23 @@ export function middleware(module: [string, string] | IWSGIFunction) {
         try {
             const wsgi = new WSGIWrapper(req, res);
             const pythonResponse = wsgiFunc(wsgi.env, wsgi.start_response);
+
+            // There are cases where start_response may not be called
+            // we need to pull a bjoern on this one
+
             if (pythonResponse) {
-                if (Array.isArray(pythonResponse)) {
-                    return wsgi.write(pythonResponse[0]);
+                // If a single element with only 1 element is returned
+                if (
+                    PyType.is(pythonResponse, 'list') &&
+                    len(pythonResponse) === 1
+                ) {
+                    // This is very ugly
+                    return wsgi.write((pythonResponse.valueOf() as any)[0]);
                 }
 
                 if (pythonResponse.hasOwnProperty('next')) {
-                    wsgi.writeIter(iterate(pythonResponse));
+                    const generator = iterate(pythonResponse as IPyIterable);
+                    return wsgi.writeIter(generator);
                 }
             }
         } catch (e) {
