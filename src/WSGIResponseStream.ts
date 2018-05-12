@@ -2,15 +2,25 @@ import { Readable } from 'stream';
 import { IPyIterable, iterate } from './python';
 
 export class WSGIResponseStream extends Readable {
-    public async consume(generator: IPyIterable<Buffer | string>) {
-        const iterable = iterate(generator);
+    private readonly iterable: Iterable<Buffer | string>;
 
-        for (const chunk of iterable) {
-            this.push(chunk);
-        }
+    constructor(generator: IPyIterable<Buffer | string>) {
+        super();
+        this.iterable = iterate(generator);
     }
 
     public _read() {
         // noop
+        this._start();
+        this._read = () => {
+            // noop
+        };
+    }
+
+    private async _start() {
+        for (const chunk of this.iterable) {
+            this.push(chunk);
+        }
+        this.push(null);
     }
 }

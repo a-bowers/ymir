@@ -18,7 +18,7 @@ export function middleware(module: string | IWSGIFunction) {
         wsgiFunc = module;
     }
 
-    if (!(wsgiFunc instanceof Function)) {
+    if (!wsgiFunc) {
         throw new Error('Module did not result into a function');
     }
 

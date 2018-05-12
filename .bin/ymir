@@ -24,7 +24,7 @@ function show(str) {
 
 function run(argv) {
     show(`Starting ${argv.app}`);
-    app.use('/', ymir.middleware(argv.app.split(':')));
+    app.use('/', ymir.middleware(argv.app));
     app.listen(argv.port, () => {
         show(`Listening on port ${argv.port}`);
     });

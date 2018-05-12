@@ -11,7 +11,8 @@ export function* iterate<T = string>(iter: IPyIterable<T>) {
         }
     } catch (e) {
         if (PyException.is(e, 'StopIteration')) {
-            return null;
+            // In node land we'll just return
+            return;
         }
         throw e;
     }

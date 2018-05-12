@@ -46,9 +46,10 @@ export class WSGI {
             if (!pythonResponse.hasOwnProperty('next')) {
                 pythonResponse = (pythonResponse as any).__iter__();
             }
-            const stream = new WSGIResponseStream();
+            const stream = new WSGIResponseStream(
+                pythonResponse as IPyIterable
+            );
             stream.pipe(this.res);
-            stream.consume(pythonResponse as IPyIterable);
         }
     }
 
