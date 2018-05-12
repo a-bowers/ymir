@@ -19,6 +19,7 @@
     "python",
     "wsgi"
   ],
+  "gypfile": true,
   "author": "ShrekOverflow",
   "license": "MIT",
   "dependencies": {
