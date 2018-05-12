@@ -11,7 +11,6 @@ export interface IPythonNode {
 
 const python: IPythonNode = bindings('binding.node');
 
-
 if (platform() === 'win32' && !process.env.PYTHONHOME) {
     throw new Error('PYTHONHOME not set');
 }

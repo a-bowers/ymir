@@ -70,15 +70,14 @@ export function toPythonEnv(req: E.Request): IDict<any> {
 
     env.HTTPS = req.secure ? 'on' : 'off';
 
-    
     env['wsgi.url_scheme'] = req.protocol as ProtocolType;
 
-    // If we have content-length, then 
+    // If we have content-length, then
     // respond accordingly
-    if (req.headers["content-length"]) {
+    if (req.headers['content-length']) {
         const body = new BytesIOStream();
         env['wsgi.input'] = body.ref;
-        req.pipe(body);    
+        req.pipe(body);
     }
 
     for (const header of Object.keys(req.headers)) {

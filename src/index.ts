@@ -4,22 +4,22 @@ import { instance } from './python';
 import { IWSGIExecInfo, IWSGIFunction, IWSGIHeaderValue, WSGI } from './WSGI';
 
 /**
- * 
+ *
  * @param module string in format module.name:function
- * @param module IWSGIFunction 
+ * @param module IWSGIFunction
  */
 export function middleware(module: string | IWSGIFunction) {
     let wsgiFunc: IWSGIFunction;
-    
+
     if (typeof module === 'string') {
         const [file, variable] = module.split(':');
         wsgiFunc = instance.import(file)[variable];
-    } else { 
+    } else {
         wsgiFunc = module;
     }
 
     if (!(wsgiFunc instanceof Function)) {
-        throw new Error("Module did not result into a function");
+        throw new Error('Module did not result into a function');
     }
 
     return function WSGIMiddleWareAdapter(
@@ -33,7 +33,7 @@ export function middleware(module: string | IWSGIFunction) {
         } catch (e) {
             next(e);
         }
-    }
+    };
 }
 
 export * from './python';
