@@ -1,53 +1,45 @@
+#include <napi.h>
+#include <node.h> 
 
-#include <node.h>
-#include <Python.h>
+#include "utils.cc"
+#include "JSPyObject.h"
 
-#include "py_object_wrapper.h"
-#include "utils.h"
-
-using namespace v8;
-using namespace node;
-
-void import(const FunctionCallbackInfo<Value>& args)
-{
+Napi::Value import(const Napi::CallbackInfo& args) {
     PyThreadStateLock py_thread_lock;
 
-    HandleScope scope(args.GetIsolate());
+    Napi::Env env = args.Env();
+    Napi::HandleScope scope(env);
 
-    if (args.Length() < 1 || !args[0]->IsString()) {
-        args.GetReturnValue().Set(args.GetIsolate()->ThrowException(
-            Exception::Error(String::NewFromUtf8(args.GetIsolate(), "I don't know how to import that."))));
-        return;
+    if (args.Length() < 1 || !args[0].IsString()) {
+        Napi::TypeError::New(env, "Exactly 1 string argument should be provided to import")
+            .ThrowAsJavaScriptException();
+        return env.Null();
     }
 
-    String::Utf8Value js_module_name_string(args[0]->ToString());
-    PyObject* py_module_name = PyString_FromString(*js_module_name_string);
-    PyObject* py_module = PyImport_Import(py_module_name);
-    Py_XDECREF(py_module_name);
-    if (py_module != NULL)
-        args.GetReturnValue().Set(PyObjectWrapper::New(py_module));
-    else
-        args.GetReturnValue().Set(ThrowPythonException());
+    std::string moduleName = args[0].As<Napi::String>();
+    PyObject * pyModule = PyImport_ImportModule(moduleName.c_str());
+
+    if (pyModule == NULL) {
+        Napi::Error::New(env, "Unable to import " + moduleName)
+            .ThrowAsJavaScriptException();
+        return env.Null();
+    }
+
+    auto instance = JSPyObject::constructor.New({ 
+        Napi::External<PyObject>::New(args.Env(), pyModule) 
+    });
+
+    return instance;
 }
 
-void init(Handle<Object> exports)
-{
+
+Napi::Object InitAll(Napi::Env env, Napi::Object exports) {
     PyInit();
-    AtExit(PyExit, NULL);
+    node::AtExit(PyExit, NULL);
 
-    HandleScope scope(Isolate::GetCurrent());
-
-    PyObjectWrapper::Initialize();
-
-    // module.exports.import
-    exports->Set(String::NewFromUtf8(Isolate::GetCurrent(), "import", String::kInternalizedString),
-        FunctionTemplate::New(Isolate::GetCurrent(), import)->GetFunction());
-
-    // module.exports.PyObject
-    Handle<FunctionTemplate> _py_function_template = 
-        Local<FunctionTemplate>::New(Isolate::GetCurrent(), PyObjectWrapper::py_function_template);
-    exports->Set(String::NewFromUtf8(Isolate::GetCurrent(), "PyObject", String::kInternalizedString),
-        _py_function_template->GetFunction());
+    JSPyObject::Initialize(env, exports);
+    exports.Set("import", Napi::Function::New(env, import));
+    return exports;
 }
 
-NODE_MODULE(binding, init)
+NODE_API_MODULE(binding, InitAll)

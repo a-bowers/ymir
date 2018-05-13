@@ -3,6 +3,16 @@
         "*.jst": "html",
         "*.sql": "pgsql",
         "exception": "cpp",
-        "iterator": "cpp"
-    }
+        "iterator": "cpp",
+        "__config": "cpp",
+        "__nullptr": "cpp",
+        "cstddef": "cpp",
+        "initializer_list": "cpp",
+        "new": "cpp",
+        "stdexcept": "cpp",
+        "type_traits": "cpp",
+        "typeinfo": "cpp",
+        "algorithm": "cpp"
+    },
+    "python.formatting.provider": "yapf",
 }
