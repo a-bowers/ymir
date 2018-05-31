@@ -7,6 +7,7 @@
 #include <Python.h>
 
 #include "utils.h"
+#include "FryCatch.h"
 
 #define X_JS_INSTANCE_OF(JSREF, JSCLASS) JSREF.As<Napi::Object>().InstanceOf(JSCLASS::constructor.Value())
 

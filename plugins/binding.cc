@@ -6,6 +6,7 @@
 
 Napi::Value import(const Napi::CallbackInfo& args) {
     PyThreadStateLock py_thread_lock;
+    FryCatch catcher(args.Env());
 
     Napi::Env env = args.Env();
     Napi::HandleScope scope(env);
@@ -17,21 +18,18 @@ Napi::Value import(const Napi::CallbackInfo& args) {
     }
 
     std::string moduleName = args[0].As<Napi::String>();
-    PyObject * pyModule = PyImport_ImportModule(moduleName.c_str());
+    PyObject * pyModuleName = PyString_FromString(moduleName.c_str());
+    PyObject * pyModule = PyImport_Import(pyModuleName);
 
-    if (pyModule == NULL) {
-        Napi::Error::New(env, "Unable to import " + moduleName)
-            .ThrowAsJavaScriptException();
-        return env.Null();
-    }
-
-    return JSPyObject::WrapPyObject(env, pyModule);
+    Py_XDECREF(pyModuleName);
+    
+    return catcher.safelyExitToJS(JSPyObject::WrapPyObject(env, pyModule));
 }
 
 
 Napi::Object InitAll(Napi::Env env, Napi::Object exports) {
     PyInit();
-    node::AtExit(PyExit, NULL);
+    napi_add_env_cleanup_hook(env, PyExit, NULL);
 
     JSPyObject::Initialize(env, exports);
     exports.Set("import", Napi::Function::New(env, import));

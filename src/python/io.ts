@@ -1,2 +1,2 @@
-import { instance } from '.';
-export const io = instance.import('io');
+import python from './instance';
+export const io = python.import('io');

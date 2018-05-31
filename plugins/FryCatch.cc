@@ -30,14 +30,19 @@ Napi::Value FryCatch::safelyExitToJS(const Napi::Value& value) {
     std::string pyErrorNameStr = PyString_AS_STRING(pyErrorName);
     std::string pyErrorMessageStr = PyString_AS_STRING(pyErrorDesc);
     
-    Napi::Error jsError = Napi::Error(this->env, Napi::String::New(this->env, pyErrorNameStr));
-    jsError.Set("errType", Napi::String::New(this->env, pyErrorMessageStr));
+    Napi::Error jsError = Napi::Error::New(this->env, Napi::String::New(this->env, pyErrorMessageStr));
+    jsError.Set("errType", Napi::String::New(this->env, pyErrorNameStr));
 
+    // Cleanup Errors
     Py_XDECREF(pyErrorType);
     Py_XDECREF(pyErrorValue);
     Py_XDECREF(pyErrorTraceback);
+
+    // x)
     Py_XDECREF(pyErrorName);
     Py_XDECREF(pyErrorDesc);
 
     jsError.ThrowAsJavaScriptException();
+    
+    return this->env.Null();
 }

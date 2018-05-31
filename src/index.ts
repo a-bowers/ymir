@@ -1,6 +1,6 @@
 import * as E from 'express';
 import { IDict } from './IDict';
-import { instance } from './python';
+import python from './python';
 import { IWSGIExecInfo, IWSGIFunction, IWSGIHeaderValue, WSGI } from './WSGI';
 
 /**
@@ -13,7 +13,7 @@ export function middleware(module: string | IWSGIFunction) {
 
     if (typeof module === 'string') {
         const [file, variable] = module.split(':');
-        wsgiFunc = instance.import(file)[variable];
+        wsgiFunc = python.import(file)[variable];
     } else {
         wsgiFunc = module;
     }

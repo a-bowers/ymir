@@ -17,7 +17,8 @@
 
       "sources": [
         "plugins/binding.cc",
-        "plugins/JSPyObject.cc"
+        "plugins/JSPyObject.cc",
+        "plugins/FryCatch.cc"
       ],
       "conditions": [
         ['OS=="mac"', {
