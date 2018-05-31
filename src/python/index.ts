@@ -18,11 +18,11 @@ python.import = (modName: string) => PyRef(originalImport(modName));
 if (platform() === 'win32' && !process.env.PYTHONHOME) {
     throw new Error('PYTHONHOME not set');
 }
-/*
-    // Add local path to sys
-    const sys = python.import('sys');
-    sys.path.append(process.cwd());
-*/
+// /*
+// Add local path to sys
+const sys = python.import('sys');
+sys.path.append(process.cwd());
+// */
 export * from './PyException';
 export * from './Iterator';
 export * from './io';

@@ -25,11 +25,7 @@ Napi::Value import(const Napi::CallbackInfo& args) {
         return env.Null();
     }
 
-    auto instance = JSPyObject::constructor.New({ 
-        Napi::External<PyObject>::New(args.Env(), pyModule) 
-    });
-
-    return instance;
+    return JSPyObject::WrapPyObject(env, pyModule);
 }
 
 

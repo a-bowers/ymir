@@ -23,3 +23,32 @@ app.use(ymir.middleware(('python.node').import('foo.bar').some_app));
 
 app.listen(4040);
 ```
+
+### Or the webtask-ified version
+
+```javascript
+const ymir = require('ymir');
+
+// 
+module.exports = ymir.load('path.to.file')['appName'];
+module.exports = ymir.wsgi('path.to.file:appName');
+
+
+// or 
+module.exports = ymir.execute(`
+def app(ctx, cb):
+    cb({
+        "How to auth": [
+            "Get access token", 
+            "Call API"
+        ]
+    })
+`).app;
+
+```
+
+### But who likes that, I wanna code in pyyyyythoooonnnnnN!?
+
+FInal goal is to have a compiler that lets you just pass this as a webtask compiler
+
+
