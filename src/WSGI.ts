@@ -75,7 +75,7 @@ export class WSGI {
         execInfo: IWSGIExecInfo
     ) {
         // Hack as the native module doesn't auto convert it to array
-        pythonHeaders = pythonHeaders.valueOf!() as any;
+        // pythonHeaders = pythonHeaders.valueOf!() as any;
 
         if (execInfo !== undefined) {
             if (this.res.headersSent) {
@@ -90,8 +90,9 @@ export class WSGI {
         const message = parts[1];
         const headers: IDict = {};
 
-        for (const [headerName, headerValue] of pythonHeaders) {
-            headers[headerName] = headerValue;
+        for (const tuple of pythonHeaders) {
+            const [headerName, headerValue] = tuple.valueOf() as any;
+            headers[headerName.valueOf()] = headerValue.valueOf();
         }
 
         this.responseBucket = {

@@ -1,5 +1,4 @@
 #include "FryCatch.h"
-#include <iostream> 
 
 FryCatch::FryCatch(const Napi::Env& env): env(env){
     // Empty for now
@@ -31,7 +30,7 @@ Napi::Value FryCatch::safelyExitToJS(const Napi::Value& value) {
     std::string pyErrorMessageStr = PyString_AS_STRING(pyErrorDesc);
     
     Napi::Error jsError = Napi::Error::New(this->env, Napi::String::New(this->env, pyErrorMessageStr));
-    jsError.Set("errType", Napi::String::New(this->env, pyErrorNameStr));
+    jsError.Set("name", Napi::String::New(this->env, pyErrorNameStr));
 
     // Cleanup Errors
     Py_XDECREF(pyErrorType);

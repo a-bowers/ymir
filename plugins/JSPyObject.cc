@@ -8,9 +8,9 @@ void JSPyObject::Initialize(Napi::Env &env, Napi::Object &exports)
     Napi::Function ctor = DefineClass(env, "JSPyObject", {
         InstanceMethod("setAttr", &JSPyObject::setAttr), 
         InstanceMethod("getAttr", &JSPyObject::getAttr), 
-        InstanceMethod("call", &JSPyObject::call), 
         InstanceMethod("valueOf", &JSPyObject::valueOf), 
-        InstanceMethod("toString", &JSPyObject::toString)
+        InstanceMethod("toString", &JSPyObject::toString),
+        InstanceMethod("call", &JSPyObject::callWrappedPythonFunction)
     });
 
     constructor = Napi::Persistent(ctor);
@@ -43,29 +43,70 @@ Napi::Value JSPyObject::toString(const Napi::CallbackInfo &args)
     return Napi::String::New(args.Env(), pyObjectStr);
 }
 
+
+PyObject * JSPyObject::getNamedPythonAttr(PyObject* self, const std::string& propName) {
+    char *attrNameCStr = (char *) propName.c_str();
+    PyObject *objAttribute = NULL;
+
+    if (PyMapping_HasKeyString(self, attrNameCStr)) {
+        objAttribute = PyMapping_GetItemString(self, attrNameCStr);
+    } else if (PyObject_HasAttrString(self, attrNameCStr)) {
+        objAttribute = PyObject_GetAttrString(self, attrNameCStr);
+    }
+
+    return objAttribute;
+}
+
+PyObject * JSPyObject::getNamedPythonAttr(PyObject* self, const Napi::Value& propName) {
+    std::string attrName = propName.As<Napi::String>();
+    return getNamedPythonAttr(self, attrName);
+}
+
+void JSPyObject::setNamedPythonAttr(
+    PyObject* self, 
+    const std::string& propName,
+    PyObject*  propValue
+) {
+    PyObject *pyKey = PyString_InternFromString(propName.c_str());
+
+    if (PyMapping_Check(self) == TRUE) {
+        PyObject_SetItem(self, pyKey, propValue);
+    } else {
+        PyObject_SetAttr(self, pyKey, propValue);
+    }
+}
+
+void JSPyObject::setNamedPythonAttr(
+    PyObject* self, 
+    const Napi::Value& propName, 
+    const Napi::Value& propValue
+) {
+    const std::string key = propName.As<Napi::String>().Utf8Value();
+    PyObject *pyValue = JSToPython(propValue);
+    JSPyObject::setNamedPythonAttr(self, key, pyValue);
+}
+
+
 Napi::Value JSPyObject::getAttr(const Napi::CallbackInfo &args)
 {
     PyThreadStateLock py_thread_lock;
 
     Napi::Env env = args.Env();
-    std::string attrName = args[0].As<Napi::String>();
-    PyObject *objAttribute = PyObject_GetAttrString(
-        this->__py_object, attrName.c_str());
+    FryCatch catcher(env);
 
-    return WrapPyObject(env, objAttribute);
+    PyObject *self = this->__py_object;
+
+    return catcher.safelyExitToJS(WrapPyObject(env, getNamedPythonAttr(self, args[0])));
 }
 
 Napi::Value JSPyObject::setAttr(const Napi::CallbackInfo &args)
 {
     PyThreadStateLock lock;
     Napi::Env env = args.Env();
+    FryCatch catcher(env);
 
-    std::string key = args[0].As<Napi::String>().Utf8Value();
-    PyObject *pyValue = JSToPython(args[1]);
-    PyObject *pyKey = PyString_InternFromString(key.c_str());
-    PyObject_SetItem(this->__py_object, pyKey, pyValue);
 
-    return env.Undefined();
+    return catcher.safelyExitToJS(args[1]);
 }
 
 Napi::Value JSPyObject::valueOf(const Napi::CallbackInfo &args)
@@ -76,32 +117,43 @@ Napi::Value JSPyObject::valueOf(const Napi::CallbackInfo &args)
     return PythonToJS(env, this->__py_object);
 }
 
-Napi::Value JSPyObject::call(const Napi::CallbackInfo &args)
-{
-    PyThreadStateLock py_thread_lock;
-    Napi::Env env = args.Env();
-    // FryCatch catcher(env);
 
+Napi::Value xcallPythonFunction(PyObject * func, const Napi::CallbackInfo& args) {
+    Napi::Env env = args.Env();
+    PyThreadStateLock py_thread_lock;
+    FryCatch catcher(env);
+    
     size_t argc = args.Length();
     PyObject *pyArgs = PyTuple_New(args.Length());
 
-    for (int i = 0; i < argc; i++)
+    for (size_t i = 0; i < argc; i++)
     {
-        PyObject *value = JSToPython(args[i]);
+        PyObject *value = JSPyObject::JSToPython(args[i]);
         if (value == NULL)
         {
-            Napi::TypeError::New(args.Env(), "Cannot safely call this function")
+            Napi::TypeError::New(args.Env(), "Cannot safely call this function as we cannot safely convert all arguments")
                 .ThrowAsJavaScriptException();
-            return args.Env().Undefined();
+            return env.Undefined();
         }
         PyTuple_SET_ITEM(pyArgs, i, value);
     }
 
-    PyObject *response = PyObject_Call(this->__py_object, pyArgs, NULL);
-
+    PyObject *response = PyObject_Call(func, pyArgs, NULL);
     Py_XDECREF(pyArgs);
 
-    return WrapPyObject(env, response);
+    return catcher.safelyExitToJS(JSPyObject::WrapPyObject(env, response));
+}
+
+Napi::Value JSPyObject::callPythonFunction(const Napi::CallbackInfo &args)
+{
+    JSPyObject * that = (JSPyObject *) args.Data();
+    return xcallPythonFunction(that->__py_object, args);
+}
+
+
+Napi::Value JSPyObject::callWrappedPythonFunction(const Napi::CallbackInfo &args)
+{
+    return xcallPythonFunction(this->__py_object, args);
 }
 
 /** 
@@ -130,10 +182,14 @@ Napi::Value JSPyObject::PythonToJS(const Napi::Env &env, PyObject *obj)
         return env.Undefined();
     }
 
-    // if (PyCallable_Check) {
+    // if (PyCallable_Check(obj) == TRUE) {
+    //     Py_XINCREF(obj);
+    //     std::cout<<"Wrapping da functionati"<<std::endl;
 
+    //     std::string funcName = PyString_AsString(getNamedPythonAttr(obj, "func_name"));
+    //     return Napi::Function::New(env, callPythonFunction, funcName, WrapPyObject(env, obj));
     // }
-    // Is this safe ?
+
     if (PyInt_CheckExact(obj) == TRUE)
     {
         return Napi::Number::New(env, PyInt_AS_LONG(obj));
@@ -172,7 +228,7 @@ Napi::Value JSPyObject::PythonToJS(const Napi::Env &env, PyObject *obj)
     {
         size_t length = PySequence_Length(obj);
         Napi::Array arr = Napi::Array::New(env, length);
-        for (int i = 0; i < length; i++)
+        for (size_t i = 0; i < length; i++)
         {
             arr.Set(i, WrapPyObject(env, PySequence_GetItem(obj, i)));
         }
@@ -184,10 +240,40 @@ Napi::Value JSPyObject::PythonToJS(const Napi::Env &env, PyObject *obj)
 
 Napi::Value JSPyObject::WrapPyObject(const Napi::Env &env, PyObject *obj)
 {
-    if (obj == NULL)
-    {
+    PyThreadStateLock lock;
+
+    if (obj == NULL) {
         return env.Undefined();
     }
+    if (obj == Py_None)
+    {
+        return env.Null();
+    }
+
+    if (PyInt_CheckExact(obj) == TRUE)
+    {
+        return X_CREATE_JS(env, Number, PyInt_AS_LONG(obj));
+    }
+
+    if (PyFloat_CheckExact(obj) == TRUE)
+    {
+        return X_CREATE_JS(env, Number, PyFloat_AS_DOUBLE(obj));
+    }
+
+    if (PyLong_CheckExact(obj) == TRUE) {
+        return X_CREATE_JS(env, Number, PyLong_AsLong(obj));
+    }
+
+    if (PyBool_Check(obj) == TRUE)
+    {
+        return X_CREATE_JS(env, Boolean, Py_True == obj);
+    }
+
+    if (PyString_CheckExact(obj) == TRUE)
+    {
+        return X_CREATE_JS(env, String, PyString_AsString(obj));
+    }
+
     return JSPyObject::constructor.New({Napi::External<PyObject>::New(env, obj)});
 }
 /**
@@ -316,7 +402,7 @@ PyObject *JSPyObject::JSToPython(const Napi::Value &jsRef)
         auto jsArray = jsRef.As<Napi::Array>();
         auto len = jsArray.Length();
         PyObject *pyArray = PyList_New(len);
-        for (auto i = 0; i < len; i++)
+        for (size_t i = 0; i < len; i++)
         {
             PyList_SetItem(pyArray, i, JSToPython(jsArray.Get(i)));
         }
@@ -330,7 +416,7 @@ PyObject *JSPyObject::JSToPython(const Napi::Value &jsRef)
         Napi::Array keys = jsObject.GetPropertyNames();
         size_t len = keys.Length();
         PyObject *pyDict = PyDict_New();
-        for (auto i = 0; i < len; i++)
+        for (size_t i = 0; i < len; i++)
         {
             auto key = keys.Get(i).ToString().Utf8Value();
             auto value = jsObject.Get(key);
@@ -341,13 +427,15 @@ PyObject *JSPyObject::JSToPython(const Napi::Value &jsRef)
 
     Napi::TypeError::New(jsRef.Env(), "Cannot convert unknown yet")
         .ThrowAsJavaScriptException();
+
+    return Py_None;
 }
 
 PyObject * JSPyObject::CallJSFunction(PyObject * self, PyObject * args)
 {
     PyThreadStateLock lock;
 
-    int64_t argc = PySequence_Length(args);
+    size_t argc = PySequence_Length(args);
     std::vector<Napi::Value> argv(argc);
 
     Napi::Function func = *((Napi::Function *) PyCObject_AsVoidPtr(self));
@@ -355,7 +443,7 @@ PyObject * JSPyObject::CallJSFunction(PyObject * self, PyObject * args)
     Napi::Env env = func.Env();
     // FryCatch fry(env);
 
-    for (int i = 0; i < argc; i++)
+    for (size_t i = 0; i < argc; i++)
     {
         PyObject *pyArg = PySequence_GetItem(args, i);
         argv[i] = JSPyObject::PythonToJS(env, pyArg);

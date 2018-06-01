@@ -28,7 +28,9 @@
         "memory": "cpp",
         "ratio": "cpp",
         "system_error": "cpp",
-        "tuple": "cpp"
+        "tuple": "cpp",
+        "__functional_03": "cpp",
+        "deque": "cpp"
     },
     "python.formatting.provider": "yapf",
 }

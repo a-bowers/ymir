@@ -9,6 +9,7 @@
 #include "utils.h"
 #include "FryCatch.h"
 
+#define X_CREATE_JS(env, type, cVal) Napi::type::New(env, cVal)
 #define X_JS_INSTANCE_OF(JSREF, JSCLASS) JSREF.As<Napi::Object>().InstanceOf(JSCLASS::constructor.Value())
 
 class JSPyObject : public Napi::ObjectWrap<JSPyObject> {
@@ -18,12 +19,20 @@ class JSPyObject : public Napi::ObjectWrap<JSPyObject> {
     public:
         static Napi::FunctionReference constructor;
         static void Initialize(Napi::Env& env, Napi::Object& exports);
+        static Napi::Value callPythonFunction(const Napi::CallbackInfo& info);
+
+        static PyObject * getNamedPythonAttr(PyObject* self, const Napi::Value& propName);
+        static PyObject * getNamedPythonAttr(PyObject* self, const std::string& propName);
+
+        static void setNamedPythonAttr(PyObject* self, const std::string& propName, PyObject * propValue);
+        static void setNamedPythonAttr(PyObject* self, const Napi::Value& propName, const Napi::Value& propValue);
 
         Napi::Value getAttr(const Napi::CallbackInfo& info);
-        Napi::Value call(const Napi::CallbackInfo& info);
         Napi::Value setAttr(const Napi::CallbackInfo& info);
         Napi::Value valueOf(const Napi::CallbackInfo& info);
         Napi::Value toString(const Napi::CallbackInfo& args);
+        Napi::Value callWrappedPythonFunction(const Napi::CallbackInfo& args);
+
 
         // Conversiion Matrix:
         // @Introspection: Should we even try to do this ? 

@@ -3,13 +3,8 @@ import { IDict } from './IDict';
 import python from './python';
 import { IWSGIExecInfo, IWSGIFunction, IWSGIHeaderValue, WSGI } from './WSGI';
 
-/**
- *
- * @param module string in format module.name:function
- * @param module IWSGIFunction
- */
-export function middleware(module: string | IWSGIFunction) {
-    let wsgiFunc: IWSGIFunction;
+export function func(module: string | IWSGIFunction) {
+    let wsgiFunc;
 
     if (typeof module === 'string') {
         const [file, variable] = module.split(':');
@@ -21,6 +16,16 @@ export function middleware(module: string | IWSGIFunction) {
     if (!wsgiFunc) {
         throw new Error('Module did not result into a function');
     }
+
+    return wsgiFunc;
+}
+/**
+ *
+ * @param module string in format module.name:function
+ * @param module IWSGIFunction
+ */
+export function middleware(module: string | IWSGIFunction) {
+    const wsgiFunc: IWSGIFunction = func(module);
 
     return function WSGIMiddleWareAdapter(
         req: E.Request,

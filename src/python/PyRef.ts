@@ -1,50 +1,28 @@
 import { IPyObject } from './IPyObject';
+import createLogger from '../logger';
 
-// tslint:disable:jsdoc-format
-/**
- * All traps are optional. If a trap has not been defined, the default behavior is to forward the operation to the target.
+const logger = createLogger('pyref');
 
-        // tslint:disable-next-line:jsdoc-format
-        handler.getPrototypeOf()
-            A trap for Object.getPrototypeOf.
-        handler.setPrototypeOf()
-            A trap for Object.setPrototypeOf.
-        handler.isExtensible()
-            A trap for Object.isExtensible.
-        handler.preventExtensions()
-            A trap for Object.preventExtensions.
-        handler.getOwnPropertyDescriptor()
-            A trap for Object.getOwnPropertyDescriptor.
-        handler.defineProperty()
-            A trap for Object.defineProperty.
-        handler.has()
-            A trap for the in operator.
-        handler.get()
-            A trap for getting property values.
-        handler.set()
-            A trap for setting property values.
-        handler.deleteProperty()
-            A trap for the delete operator.
-        handler.ownKeys()
-            A trap for Object.getOwnPropertyNames and Object.getOwnPropertySymbols.
-        handler.apply()
-            A trap for a function call.
-        handler.construct()
-            A trap for the new operator.
-*/
-// tslint:enable:jsdoc-format
-
-const handler = {
+const handler: any = {
     get(self: any, key: string) {
-        if (!self.__attr__[key]) {
-            self.__attr__[key] = PyRef(self.ref.getAttr(key));
-        }
-        return self.__attr__[key];
+        return self.__attr__[key] || PyRef(self.ref.getAttr(key));
     },
 
-    apply(self: any, thisArg: any, args: any[]): any {
-        return PyRef(self.ref.call(...args));
+    set(self: any, key: string, value: any) {
+        if (!self.__attr__[key]) {
+            self.setAttr(key, value);            
+        }
+
+        return value;
     },
+
+    has(self: any, key: string) {
+        return !!self[key];
+    },
+
+    apply(self: any, thisArg: any, args: any[]) {
+        return PyRef(self.ref.call(...args));
+    }
 };
 
 export function PyRef(pyObject: IPyObject | undefined) {
@@ -69,9 +47,12 @@ export function PyRef(pyObject: IPyObject | undefined) {
         [Symbol.toStringTag]: pyObject.toString.bind(pyObject),
         toString: pyObject.toString.bind(pyObject),
         valueOf: pyObject.valueOf.bind(pyObject),
+        apply: (thisArg: any, args: any[] = []) =>
+            PyRef(instance.ref.call(...args)),
+        call: (thisArg: any, ...args: any[]) =>
+            PyRef(instance.ref.call(...args)),
     };
 
     instance.ref = pyObject;
-
     return new Proxy(instance, handler);
 }

@@ -8,7 +8,7 @@ assert(Array.isArray(sys.path) != true, "sys.path is an array");
 assert(Array.isArray(sys.path.valueOf()), "valueOf sys.path is not an array");
 // assert(typeof sys.path.valueOf()[0] === 'string', "Path was not string");
 
-// assert(sys.stdout.nonexistent === undefined, "Non existent was defined");
+assert(sys.stdout.nonexistent === undefined, "Non existent was defined");
 
 // sys.path.append(process.cwd());
 
