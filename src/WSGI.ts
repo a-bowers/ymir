@@ -37,19 +37,21 @@ export class WSGI {
     }
 
     public async execute(wsgiFunc: IWSGIFunction) {
-        let pythonResponse = wsgiFunc(this.env, this.start_response);
-
-        // There are cases where start_response may not be called
-        // we need to pull a bjoern on this one
-
-        if (pythonResponse) {
-            if (!pythonResponse.hasOwnProperty('next')) {
-                pythonResponse = (pythonResponse as any).__iter__();
+        console.log("Calling the function");
+        try {
+            let pythonResponse = wsgiFunc(this.env, this.start_response);
+            console.log("IT WORKED!");    
+            if (pythonResponse) {
+                if (!pythonResponse.hasOwnProperty('next')) {
+                    pythonResponse = (pythonResponse as any).__iter__();
+                }
+                const stream = new WSGIResponseStream(
+                    pythonResponse as IPyIterable
+                );
+                stream.pipe(this.res);
             }
-            const stream = new WSGIResponseStream(
-                pythonResponse as IPyIterable
-            );
-            stream.pipe(this.res);
+        } catch (e) {
+            console.error(e);
         }
     }
 
@@ -63,6 +65,7 @@ export class WSGI {
     }
 
     private write(data: Buffer | string) {
+        console.log("WRITE WAS CALLED");
         if (!this.res.headersSent) {
             this._writeStatusAndHeaders();
         }
@@ -76,7 +79,8 @@ export class WSGI {
     ) {
         // Hack as the native module doesn't auto convert it to array
         // pythonHeaders = pythonHeaders.valueOf!() as any;
-
+        console.log("START TO RESPOND~!");
+        
         if (execInfo !== undefined) {
             if (this.res.headersSent) {
                 throw new Error(execInfo[1]);

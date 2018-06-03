@@ -8,7 +8,7 @@
   },
   "scripts": {
     "clean": "rimraf lib && rimraf coverage",
-    "wt": "nodemon --exec \"wt serve --port 8020\" --watch ./lib ./tests/wt-cli.js",
+    "wt": "nodemon --exec \"wt serve --port 8020\" --watch ./lib",
     "format": "prettier --write \"{src,__tests__}/**/*.ts\"",
     "lint": "tslint --force --format verbose \"src/**/*.ts\"",
     "prepublish": "npm run build",
